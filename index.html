@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>數量比較練習軟體</title>
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --bg-color: #F5F7FA;
+            --card-bg: #FFFFFF;
+            --text-color: #333333;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 { color: var(--primary-color); }
+        .container {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 800px;
+        }
+        /* 設定區塊 */
+        .setting-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+        label { font-weight: bold; display: block; margin-bottom: 8px; }
+        input[type="number"], select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .checkbox-group label { display: inline-block; margin-right: 20px; font-weight: normal; }
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 5px;
+        }
+        .btn:hover { background-color: #357ABD; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-secondary:hover { background-color: #5a6268; }
+        
+        /* 遊戲區塊 */
+        #game-area, #result-area { display: none; text-align: center; }
+        .instruction { font-size: 28px; font-weight: bold; margin-bottom: 20px; color: #D0021B; }
+        .cards-container {
+            display: flex;
+            justify-content: space-around;
+            margin-top: 30px;
+        }
+        .card {
+            width: 45%;
+            min-height: 250px;
+            border: 4px solid #B0C4DE;
+            border-radius: 15px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            background: #fff;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .card:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+            border-color: var(--primary-color);
+        }
+        .card-number { font-size: 60px; font-weight: bold; margin: 10px 0; }
+        .card-images {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+        }
+        .item-img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+        .status-bar { display: flex; justify-content: space-between; font-size: 20px; margin-bottom: 20px;}
+        
+        /* 縮圖預覽 */
+        #image-preview {
+            display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;
+        }
+        .preview-img { width: 40px; height: 40px; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
+</head>
+<body>
+
+<div class="container" id="setup-area">
+    <h1>📝 數量比較練習 - 教師設定</h1>
+    
+    <div class="setting-group">
+        <label>1. 自行輸入圖片 (可複選，不選則使用預設星星圖案)</label>
+        <input type="file" id="image-upload" accept="image/*" multiple>
+        <div id="image-preview"></div>
+    </div>
+
+    <div class="setting-group">
+        <label>2. 選擇出題題數 (1 至 10 題)</label>
+        <input type="number" id="question-count" min="1" max="10" value="5">
+    </div>
+
+    <div class="setting-group">
+        <label>3. 比較邏輯</label>
+        <select id="compare-mode">
+            <option value="more">選比較「多」的</option>
+            <option value="less">選比較「少」的</option>
+        </select>
+    </div>
+
+    <div class="setting-group">
+        <label>4. 題目卡顯示內容</label>
+        <div class="checkbox-group">
+            <label><input type="checkbox" id="show-image" checked> 顯示圖片</label>
+            <label><input type="checkbox" id="show-number" checked> 顯示數字</label>
+        </div>
+    </div>
+
+    <div class="setting-group" style="text-align: center;">
+        <button class="btn" onclick="startGame()">開始測驗</button>
+        <button class="btn btn-secondary" onclick="exportSettings()">匯出設定</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">匯入設定</button>
+        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importSettings(event)">
+    </div>
+</div>
+
+<div class="container" id="game-area">
+    <div class="status-bar">
+        <span id="score-display">分數: 0</span>
+        <span id="progress-display">第 1 題</span>
+    </div>
+    <div class="instruction" id="instruction-text">請選出數量比較【多】的卡片</div>
+    
+    <div class="cards-container">
+        <div class="card" onclick="checkAnswer(0)" id="card-left"></div>
+        <div class="card" onclick="checkAnswer(1)" id="card-right"></div>
+    </div>
+</div>
+
+<div class="container" id="result-area">
+    <h1>🎉 練習結束！</h1>
+    <h2 id="final-score" style="font-size: 40px; color: var(--primary-color);"></h2>
+    <button class="btn" onclick="returnToSetup()">回到設定</button>
+</div>
+
+<script>
+    // 預設星星 SVG 作為預設圖片
+    const defaultImage = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFD700'><path d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/></svg>";
+    
+    let appSettings = {
+        images: [],
+        questionCount: 5,
+        compareMode: 'more', // 'more' 或 'less'
+        showImage: true,
+        showNumber: true
+    };
+
+    let gameState = {
+        currentQ: 0,
+        score: 0,
+        questions: []
+    };
+
+    // 處理圖片上傳與 Base64 轉換
+    document.getElementById('image-upload').addEventListener('change', function(e) {
+        const files = e.target.files;
+        appSettings.images = [];
+        document.getElementById('image-preview').innerHTML = '';
+        
+        Array.from(files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const base64Str = event.target.result;
+                appSettings.images.push(base64Str);
+                
+                const img = document.createElement('img');
+                img.src = base64Str;
+                img.className = 'preview-img';
+                document.getElementById('image-preview').appendChild(img);
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+
+    // 匯出設定 (JSON)
+    function exportSettings() {
+        updateSettingsFromUI();
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appSettings));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "quantity_settings.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    // 匯入設定 (JSON)
+    function importSettings(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const imported = JSON.parse(e.target.result);
+                appSettings = imported;
+                updateUIFromSettings();
+                alert("設定匯入成功！");
+            } catch (err) {
+                alert("檔案格式錯誤");
+            }
+        };
+        reader.readAsText(file);
+    }
+
+    function updateSettingsFromUI() {
+        appSettings.questionCount = parseInt(document.getElementById('question-count').value) || 5;
+        appSettings.compareMode = document.getElementById('compare-mode').value;
+        appSettings.showImage = document.getElementById('show-image').checked;
+        appSettings.showNumber = document.getElementById('show-number').checked;
+        
+        // 防呆：兩者都沒勾，預設顯示數字
+        if (!appSettings.showImage && !appSettings.showNumber) {
+            appSettings.showNumber = true;
+            document.getElementById('show-number').checked = true;
+        }
+    }
+
+    function updateUIFromSettings() {
+        document.getElementById('question-count').value = appSettings.questionCount;
+        document.getElementById('compare-mode').value = appSettings.compareMode;
+        document.getElementById('show-image').checked = appSettings.showImage;
+        document.getElementById('show-number').checked = appSettings.showNumber;
+        
+        const preview = document.getElementById('image-preview');
+        preview.innerHTML = '';
+        appSettings.images.forEach(src => {
+            const img = document.createElement('img');
+            img.src = src;
+            img.className = 'preview-img';
+            preview.appendChild(img);
+        });
+    }
+
+    // 開始遊戲
+    function startGame() {
+        updateSettingsFromUI();
+        gameState.score = 0;
+        gameState.currentQ = 0;
+        gameState.questions = generateQuestions(appSettings.questionCount);
+        
+        document.getElementById('setup-area').style.display = 'none';
+        document.getElementById('result-area').style.display = 'none';
+        document.getElementById('game-area').style.display = 'block';
+        
+        const text = appSettings.compareMode === 'more' ? '多' : '少';
+        document.getElementById('instruction-text').innerText = `請選出數量比較【${text}】的卡片`;
+        
+        renderQuestion();
+    }
+
+    // 生成題目
+    function generateQuestions(count) {
+        let qs = [];
+        for (let i = 0; i < count; i++) {
+            let num1 = Math.floor(Math.random() * 10) + 1; // 1~10
+            let num2;
+            do {
+                num2 = Math.floor(Math.random() * 10) + 1;
+            } while (num1 === num2); // 確保兩邊數量不同
+
+            // 決定哪一邊是正確答案
+            let correctIndex = -1;
+            if (appSettings.compareMode === 'more') {
+                correctIndex = num1 > num2 ? 0 : 1;
+            } else {
+                correctIndex = num1 < num2 ? 0 : 1;
+            }
+
+            // 隨機選一張圖片
+            let imgSrc = defaultImage;
+            if (appSettings.images.length > 0) {
+                imgSrc = appSettings.images[Math.floor(Math.random() * appSettings.images.length)];
+            }
+
+            qs.push({
+                counts: [num1, num2],
+                correct: correctIndex,
+                image: imgSrc
+            });
+        }
+        return qs;
+    }
+
+    // 渲染卡片
+    function renderQuestion() {
+        const q = gameState.questions[gameState.currentQ];
+        document.getElementById('progress-display').innerText = `第 ${gameState.currentQ + 1} / ${appSettings.questionCount} 題`;
+        document.getElementById('score-display').innerText = `分數: ${gameState.score}`;
+
+        const cards = [document.getElementById('card-left'), document.getElementById('card-right')];
+        
+        cards.forEach((card, index) => {
+            card.innerHTML = ''; // 清空卡片
+            const count = q.counts[index];
+
+            // 顯示圖片
+            if (appSettings.showImage) {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'card-images';
+                for(let i=0; i<count; i++) {
+                    const img = document.createElement('img');
+                    img.src = q.image;
+                    img.className = 'item-img';
+                    imgContainer.appendChild(img);
+                }
+                card.appendChild(imgContainer);
+            }
+
+            // 顯示數字
+            if (appSettings.showNumber) {
+                const numDiv = document.createElement('div');
+                numDiv.className = 'card-number';
+                numDiv.innerText = count;
+                card.appendChild(numDiv);
+            }
+        });
+    }
+
+    // 檢查答案
+    function checkAnswer(selectedIndex) {
+        const q = gameState.questions[gameState.currentQ];
+        if (selectedIndex === q.correct) {
+            gameState.score += 100 / appSettings.questionCount;
+            // 這裡可以加入正確音效
+        } else {
+            // 這裡可以加入錯誤音效
+        }
+
+        gameState.currentQ++;
+        if (gameState.currentQ < appSettings.questionCount) {
+            renderQuestion();
+        } else {
+            showResult();
+        }
+    }
+
+    // 顯示結果
+    function showResult() {
+        document.getElementById('game-area').style.display = 'none';
+        document.getElementById('result-area').style.display = 'block';
+        document.getElementById('final-score').innerText = `總得分: ${Math.round(gameState.score)} 分`;
+    }
+
+    function returnToSetup() {
+        document.getElementById('result-area').style.display = 'none';
+        document.getElementById('setup-area').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
