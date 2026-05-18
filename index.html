@@ -1,121 +1,704 @@
-These documents are all about how the Catholic Church responded to challenges during the Reformation, especially through the Counter-Reformation.
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>數量比較練習軟體 (進階版)</title>
+    <style>
+        :root {
+            --primary-color: #4A90E2;
+            --bg-color: #F5F7FA;
+            --card-bg: #FFFFFF;
+            --text-color: #333333;
+            --error-color: #E74C3C;
+            --success-color: #2ECC71;
+        }
+        
+        /* 基礎全域設定 */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: all 0.3s;
+        }
+        
+        /* 遊戲中鎖定畫面尺寸，避免捲動 */
+        body.in-game {
+            height: 100vh;
+            overflow: hidden;
+            padding: 10px;
+            box-sizing: border-box;
+        }
 
-Here’s a breakdown of each document and the main idea/message:
+        h1 { color: var(--primary-color); text-align: center; margin-top: 0; }
+        .container {
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 900px;
+            box-sizing: border-box;
+        }
 
----
+        /* 遊戲區域滿版設定 */
+        body.in-game #game-area {
+            display: flex;
+            flex-direction: column;
+            max-width: 100vw;
+            height: 100%;
+            padding: 10px 15px;
+        }
 
-# Document #1 — Jesuits and Obedience
+        /* 設定區塊 */
+        .setting-group { margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 10px; }
+        .setting-row { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 10px; }
+        .setting-item { flex: 1; min-width: 200px; }
+        label { font-weight: bold; display: block; margin-bottom: 8px; }
+        input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
+        
+        .btn {
+            background-color: var(--primary-color); color: white; border: none;
+            padding: 12px 24px; font-size: 18px; border-radius: 8px; cursor: pointer;
+            transition: background 0.3s; margin: 5px;
+        }
+        .btn:hover { background-color: #357ABD; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-secondary:hover { background-color: #5a6268; }
+        .btn-small { padding: 8px 15px; font-size: 16px; margin: 0; }
+        
+        /* 縮圖預覽與圖片選擇 */
+        #image-preview { display: flex; gap: 15px; margin-top: 15px; flex-wrap: wrap; }
+        .img-select-item { 
+            display: flex; flex-direction: column; align-items: center; 
+            border: 2px solid #ddd; padding: 8px; border-radius: 8px; background: #fff;
+        }
+        .img-select-item.active { border-color: var(--primary-color); background: #eef5ff; }
+        .preview-img { width: 60px; height: 60px; object-fit: contain; margin-bottom: 5px; }
+        .img-name-input { width: 80px; font-size: 12px; text-align: center; border: 1px solid #ccc; }
 
-This is from the Constitution of the Jesuits (1540).
+        /* 遊戲區塊顯示 */
+        #game-area, #result-area { display: none; text-align: center; }
+        
+        /* 遊戲上方控制列 (緊湊排列) */
+        .game-action-bar {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 15px; 
+            background: #f1f5f9; padding: 10px 15px; border-radius: 10px; margin-bottom: 10px; font-weight: bold;
+            flex-shrink: 0;
+        }
+        .game-action-bar label { margin-bottom: 0; display: flex; align-items: center; cursor: pointer; font-size: 16px; color: var(--primary-color); font-weight: normal;}
+        .game-action-bar input[type="checkbox"] { margin-right: 5px; width: 18px; height: 18px; }
 
-### Main idea:
+        /* 分割畫板區 - 利用 Flexbox 自適應高度 */
+        .boards-container { 
+            display: flex; gap: 15px; align-items: stretch; justify-content: center; 
+            width: 100%; flex: 1; min-height: 0; /* 確保內容可向內壓縮 */
+        }
+        .board { 
+            flex: 1; padding: 15px; border-radius: 10px; background: #fff; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: flex; flex-direction: column; 
+            align-items: stretch; min-height: 0; overflow: hidden;
+        }
+        #board-right { pointer-events: none; border: 3px dashed #B0C4DE; } 
 
-The Jesuits believed Catholics must obey the pope completely and defend the Catholic faith.
+        .instruction { font-size: 24px; font-weight: bold; margin-bottom: 10px; color: #D0021B; flex-shrink: 0;}
+        .status-bar { display: flex; justify-content: space-between; width: 100%; font-size: 18px; margin-bottom: 10px; font-weight: bold; color: #555; flex-shrink: 0;}
+        
+        /* 預設方塊排版 (會依據高度自動壓縮) */
+        .cards-container { 
+            display: flex; flex-wrap: wrap; justify-content: center; align-content: stretch; 
+            gap: 10px; width: 100%; flex: 1; min-height: 0; overflow: hidden;
+        }
+        .card {
+            flex: 1 1 calc(33% - 10px); min-width: 120px; min-height: 0; /* 允許垂直壓縮 */
+            border: 4px solid #B0C4DE; border-radius: 15px; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 10px; background: #fff; transition: transform 0.2s, box-shadow 0.2s; box-sizing: border-box;
+        }
+        .card:hover { transform: scale(1.02); box-shadow: 0 5px 15px rgba(0,0,0,0.15); border-color: var(--primary-color); }
+        .card.correct { border-color: var(--success-color); background-color: #eafaf1; pointer-events: none; }
+        .card.wrong { border-color: var(--error-color); background-color: #fceceb; }
+        
+        .card-number { font-size: 40px; font-weight: bold; margin: 5px 0; }
+        .card-images { display: flex; flex-wrap: wrap; justify-content: center; gap: 5px; flex: 1; min-height: 0; overflow: hidden; align-items: center;}
+        .item-img { width: 40px; height: 40px; max-width: 100%; max-height: 100%; object-fit: contain; }
 
-### Evidence:
+        /* ====== 新增：長條式排版專屬樣式 ====== */
+        .layout-bar-container {
+            flex-direction: column; /* 強制單行單卡 */
+            flex-wrap: nowrap;
+            align-items: stretch;
+            justify-content: space-evenly; /* 平均分配間距 */
+            gap: 5px;
+        }
+        .layout-bar-container .card {
+            flex-direction: row; /* 內部橫向排列 */
+            flex: 1; /* 允許卡片自動縮放高度 */
+            width: 100%;
+            max-width: none;
+            padding: 5px 15px;
+            justify-content: space-between;
+        }
+        .layout-bar-container .card-images {
+            flex-wrap: nowrap; /* 強制圖片不換行 */
+            justify-content: flex-start;
+            align-items: center;
+            flex: 1; 
+            height: 100%;
+            min-width: 0; /* 防止 Flex 子元素撐破父容器 */
+            gap: 5px;
+        }
+        .layout-bar-container .item-img {
+            /* 根據題目的最大數量自動計算完美寬度 */
+            width: calc((100% - (var(--max-items) - 1) * 5px) / var(--max-items));
+            max-width: 60px; /* 數量少時不至於大得誇張 */
+            height: 100%;
+            max-height: 50px;
+            object-fit: contain;
+            min-width: 0;
+            flex-shrink: 1; /* 允許極端情況下稍微縮小 */
+        }
+        .layout-bar-container .card-number {
+            margin: 0 0 0 15px; 
+            font-size: 32px;
+            order: 2; /* 讓數字強制顯示在最右側 */
+            min-width: 40px;
+            text-align: right;
+        }
+        
+        /* 震動動畫 */
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        .shake { animation: shake 0.4s; }
 
-* “fighting for God under the faithful obedience to one most holy lord and the pope”
-* “we are pledged to obey without evasion or excuse”
+    </style>
+</head>
+<body>
 
-### Historical significance:
+<div class="container" id="setup-area">
+    <h1>📝 數量比較練習系統</h1>
+    
+    <div class="setting-group">
+        <label>1. 題庫來源 (從 tpectim/picoffline 載入 或 自行上傳)</label>
+        <div class="setting-row">
+            <div class="setting-item">
+                <select id="github-json-select" onchange="loadGithubJson(this.value)">
+                    <option value="">🔄 正在連線至 GitHub 讀取清單...</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <input type="file" id="image-upload" accept="image/*" multiple title="自行上傳本機圖片">
+            </div>
+        </div>
+        <div id="image-preview"></div>
+    </div>
 
-The Jesuits became one of the strongest forces of the Counter-Reformation. They spread Catholicism through education and missionary work.
+    <div class="setting-group">
+        <div class="setting-row">
+            <div class="setting-item">
+                <label>出題數量 (1-10)</label>
+                <input type="number" id="question-count" min="1" max="10" value="10">
+            </div>
+            <div class="setting-item">
+                <label>答案卡數量 (1-10)</label>
+                <input type="number" id="card-count" min="1" max="10" value="3">
+            </div>
+        </div>
+        <div class="setting-row">
+            <div class="setting-item">
+                <label>數量範圍 (最小)</label>
+                <input type="number" id="min-count" min="1" max="50" value="1">
+            </div>
+            <div class="setting-item">
+                <label>數量範圍 (最大)</label>
+                <input type="number" id="max-count" min="1" max="50" value="15">
+            </div>
+            <div class="setting-item">
+                <label>選項數量最少相差</label>
+                <input type="number" id="min-diff" min="1" max="20" value="2">
+            </div>
+        </div>
+    </div>
 
----
+    <div class="setting-group">
+        <div class="setting-row">
+            <div class="setting-item">
+                <label>比較邏輯</label>
+                <select id="compare-mode">
+                    <option value="more">選出數量比較「多」的</option>
+                    <option value="less">選出數量比較「少」的</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <label>圖片分配方式</label>
+                <select id="image-mode">
+                    <option value="same">所有答案卡使用【同一張】圖片</option>
+                    <option value="diff">每張答案卡使用【各自】的圖片</option>
+                </select>
+            </div>
+        </div>
+    </div>
 
-# Document #2 — Ignatius Loyola’s Rules
+    <div class="setting-group" style="text-align: center;">
+        <button class="btn" onclick="startGame()">開始測驗</button>
+        <button class="btn btn-secondary" onclick="exportSettings()">匯出設定</button>
+        <button class="btn btn-secondary" onclick="document.getElementById('import-file').click()">匯入設定檔</button>
+        <input type="file" id="import-file" accept=".json" style="display: none;" onchange="importSettings(event)">
+    </div>
+</div>
 
-Ignatius Loyola founded the Jesuits.
+<div class="container" id="game-area">
+    <div class="game-action-bar">
+        <label><input type="checkbox" id="game-layout-bar" onchange="toggleLayout()"> 長條排版</label>
+        <label><input type="checkbox" id="game-show-image" checked onchange="syncGameSettings()"> 顯示圖片</label>
+        <label><input type="checkbox" id="game-show-number" checked onchange="syncGameSettings()"> 顯示數字</label>
+        <label><input type="checkbox" id="game-speak-name" checked onchange="syncGameSettings()"> 報讀名稱</label>
+        <label><input type="checkbox" id="game-split-view" onchange="toggleSplitView()"> 📺 分割檢視</label>
+        <button class="btn btn-secondary btn-small" onclick="returnToSetup()">⏹️ 回到設定</button>
+    </div>
 
-### Main idea:
+    <div class="boards-container">
+        <div id="board-left" class="board"></div>
+        <div id="board-right" class="board" style="display:none;"></div>
+    </div>
+</div>
 
-Catholics should trust and obey the Church even above their own judgment.
+<div class="container" id="result-area">
+    <h1>🎉 練習結束！</h1>
+    <h2 id="final-score" style="font-size: 40px; color: var(--primary-color);"></h2>
+    <button class="btn" onclick="returnToSetup()">回到設定</button>
+</div>
 
-### Important points:
+<script>
+    const defaultStar = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23FFD700'><path d='M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z'/></svg>";
+    
+    let imageLibrary = [];
+    let audioCtx = null;
+    let synth = window.speechSynthesis;
 
-* Obey the Church in all things
-* Praise religious life and vows
-* Accept Church teaching completely
+    let appSettings = {
+        questionCount: 10, cardCount: 3, minCount: 1, maxCount: 15, minDiff: 2,
+        compareMode: 'more', imageMode: 'same', showImage: true, showNumber: true, speakName: true
+    };
 
-### Strongest quote:
+    let gameState = { currentQ: 0, score: 0, questions: [], isWaitingNext: false };
 
-* “What seems to me white, I will believe black if the Church says so.”
+    // --- 初始化與資料處理 ---
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+            const res = await fetch('https://api.github.com/repos/tpectim/picoffline/contents/');
+            const data = await res.json();
+            const select = document.getElementById('github-json-select');
+            if (Array.isArray(data)) {
+                const jsonFiles = data.filter(f => f.name.endsWith('.json'));
+                select.innerHTML = '<option value="">-- 請選擇 GitHub 題庫 --</option>';
+                jsonFiles.forEach(f => {
+                    select.innerHTML += `<option value="${f.download_url}">${f.name}</option>`;
+                });
+            } else { select.innerHTML = '<option value="">(讀取 GitHub 清單失敗，請使用本機上傳)</option>'; }
+        } catch (e) { document.getElementById('github-json-select').innerHTML = '<option value="">(無法連線至 GitHub)</option>'; }
+    });
 
-### Meaning:
+    async function loadGithubJson(url) {
+        if (!url) return;
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            processImportedData(data);
+        } catch (e) { alert('JSON 載入失敗！\n' + e.message); }
+    }
 
-Loyalty to Church authority was considered more important than personal interpretation.
+    document.getElementById('image-upload').addEventListener('change', function(e) {
+        Array.from(e.target.files).forEach(file => {
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                const name = file.name.split('.')[0]; 
+                imageLibrary.push({ id: Date.now() + Math.random(), src: event.target.result, name: name, active: true });
+                renderImagePreview();
+            };
+            reader.readAsDataURL(file);
+        });
+        this.value = '';
+    });
 
----
+    function processImportedData(data) {
+        let addedCount = 0;
+        const processItem = (item, index) => {
+            if (typeof item === 'string' && item.startsWith('data:image')) return { src: item, name: `圖片 ${index+1}` };
+            if (typeof item === 'object') {
+                let src = item.original || item.image || item.img || item.src || item.base64;
+                let name = item.name || item.title || item.text || `圖片 ${index+1}`;
+                if (src) return { src, name };
+            }
+            return null;
+        };
 
-# Document #3 — Spanish Inquisition Torture Chamber
+        if (Array.isArray(data)) {
+            data.forEach((item, i) => {
+                const parsed = processItem(item, i);
+                if (parsed) {
+                    imageLibrary.push({ id: Date.now()+i, src: parsed.src, name: parsed.name, active: true });
+                    addedCount++;
+                }
+            });
+        } else if (typeof data === 'object' && data.imageLibrary) {
+            imageLibrary = data.imageLibrary;
+            addedCount = imageLibrary.length;
+        }
+        
+        if (addedCount > 0) { renderImagePreview(); alert(`成功匯入 ${addedCount} 張圖片！`); } 
+        else { alert('在此 JSON 中找不到可辨識的圖片資料。'); }
+    }
 
-### Main idea:
+    function renderImagePreview() {
+        const preview = document.getElementById('image-preview');
+        preview.innerHTML = '';
+        imageLibrary.forEach(imgObj => {
+            const div = document.createElement('div');
+            div.className = `img-select-item ${imgObj.active ? 'active' : ''}`;
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.checked = imgObj.active;
+            checkbox.onchange = (e) => { imgObj.active = e.target.checked; renderImagePreview(); };
 
-The Catholic Church used fear and punishment to stop heresy.
+            const img = document.createElement('img');
+            img.src = imgObj.src; img.className = 'preview-img';
 
-The image shows torture used during the Spanish Inquisition against people accused of opposing Church teachings.
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text'; nameInput.className = 'img-name-input';
+            nameInput.value = imgObj.name;
+            nameInput.onchange = (e) => { imgObj.name = e.target.value; };
 
-### Historical significance:
+            div.append(checkbox, img, nameInput);
+            preview.appendChild(div);
+        });
+    }
 
-The Inquisition tried to preserve Catholic unity and remove Protestant or non-Catholic ideas.
+    // --- 音效與語音 ---
+    function initAudio() {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
 
----
+    function playSound(type) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+        
+        if (type === 'correct') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.1);
+            osc.frequency.setValueAtTime(783.99, now + 0.2);
+            gain.gain.setValueAtTime(0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+            osc.start(now); osc.stop(now + 0.5);
+        } else if (type === 'wrong') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(150, now);
+            osc.frequency.exponentialRampToValueAtTime(80, now + 0.3);
+            gain.gain.setValueAtTime(0.4, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+            osc.start(now); osc.stop(now + 0.3);
+        }
+    }
 
-# Document #4 — Council of Trent
+    function speakText(text) {
+        if (!appSettings.speakName) return;
+        synth.cancel(); 
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'zh-TW';
+        synth.speak(utterance);
+    }
 
-The Council of Trent was the Catholic Church’s official response to the Reformation.
+    // --- 遊戲核心邏輯 ---
+    function startGame() {
+        initAudio();
+        document.body.classList.add('in-game'); // 鎖定視窗大小，避免捲動
+        
+        appSettings.questionCount = parseInt(document.getElementById('question-count').value) || 10;
+        appSettings.cardCount = parseInt(document.getElementById('card-count').value) || 3;
+        appSettings.minCount = parseInt(document.getElementById('min-count').value) || 1;
+        appSettings.maxCount = parseInt(document.getElementById('max-count').value) || 15;
+        appSettings.minDiff = parseInt(document.getElementById('min-diff').value) || 1;
+        appSettings.compareMode = document.getElementById('compare-mode').value;
+        appSettings.imageMode = document.getElementById('image-mode').value;
 
-### Main ideas:
+        appSettings.showImage = document.getElementById('game-show-image').checked;
+        appSettings.showNumber = document.getElementById('game-show-number').checked;
+        appSettings.speakName = document.getElementById('game-speak-name').checked;
 
-1. Only the Church can correctly interpret the Bible
-2. Indulgences are still valid
-3. The Church admits some abuses happened and wants reforms
+        if (appSettings.minCount > appSettings.maxCount) {
+            let temp = appSettings.minCount; appSettings.minCount = appSettings.maxCount; appSettings.maxCount = temp;
+        }
 
-### Evidence:
+        let minRequiredSpan = (appSettings.cardCount - 1) * appSettings.minDiff + 1;
+        let poolSpan = appSettings.maxCount - appSettings.minCount + 1;
+        if (poolSpan < minRequiredSpan) {
+            appSettings.maxCount = appSettings.minCount + minRequiredSpan - 1;
+            document.getElementById('max-count').value = appSettings.maxCount;
+            alert(`範圍不足以讓 ${appSettings.cardCount} 個答案至少相差 ${appSettings.minDiff}，已自動將最大數量調整為 ${appSettings.maxCount}`);
+        }
 
-* “no one shall presume to interpret… contrary to… the holy mother Church”
-* “The power of conferring indulgences… was granted by Christ”
-* the Church condemns people who abuse indulgences
+        if (!appSettings.showImage && !appSettings.showNumber) {
+            appSettings.showNumber = true; document.getElementById('game-show-number').checked = true;
+        }
 
-### Historical significance:
+        gameState.score = 0;
+        gameState.currentQ = 0;
+        gameState.isWaitingNext = false;
+        gameState.questions = generateQuestions();
 
-The Council of Trent strengthened Catholic doctrine while correcting some corruption.
+        document.getElementById('setup-area').style.display = 'none';
+        document.getElementById('result-area').style.display = 'none';
+        document.getElementById('game-area').style.display = 'flex';
 
----
+        toggleSplitView();
+        renderQuestion();
+    }
 
-# Document #5 — Pope Gregory XI against John Wycliffe
+    function syncGameSettings() {
+        appSettings.showImage = document.getElementById('game-show-image').checked;
+        appSettings.showNumber = document.getElementById('game-show-number').checked;
+        appSettings.speakName = document.getElementById('game-speak-name').checked;
+        
+        if (!appSettings.showImage && !appSettings.showNumber) {
+            appSettings.showNumber = true; document.getElementById('game-show-number').checked = true;
+        }
+        renderQuestion(true); 
+    }
 
-John Wycliffe criticized the Catholic Church before Luther.
+    function toggleLayout() {
+        // 切換排版時直接重新渲染，確保左、右畫板的類別更新完全同步
+        renderQuestion(true);
+    }
 
-### Main idea:
+    function toggleSplitView() {
+        const isSplit = document.getElementById('game-split-view').checked;
+        // 分割畫面展開時，設定為 flex 以維持內部自適應
+        document.getElementById('board-right').style.display = isSplit ? 'flex' : 'none';
+    }
 
-The Church viewed critics as dangerous heretics who threatened society and religion.
+    function generateDistinctWithMinDiff(count, min, max, diff) {
+        let adjustedMax = max - (count - 1) * (diff - 1);
+        let pool = [];
+        for (let i = min; i <= adjustedMax; i++) pool.push(i);
+        
+        let picked = [];
+        for(let c = 0; c < count; c++) {
+            let r = Math.floor(Math.random() * pool.length);
+            picked.push(pool.splice(r, 1)[0]);
+        }
+        picked.sort((a,b) => a - b);
+        for(let i = 0; i < count; i++) { picked[i] += i * (diff - 1); }
+        
+        for (let i = picked.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [picked[i], picked[j]] = [picked[j], picked[i]];
+        }
+        return picked;
+    }
 
-### Evidence:
+    function generateQuestions() {
+        let activeImages = imageLibrary.filter(img => img.active);
+        if (activeImages.length === 0) activeImages = [{ src: defaultStar, name: '星星' }]; 
 
-* Wycliffe is called a “detestable madness”
-* his teachings are described as a “deadly pestilence”
-* officials are ordered to arrest him
+        let qs = [];
+        for (let i = 0; i < appSettings.questionCount; i++) {
+            let counts = generateDistinctWithMinDiff(appSettings.cardCount, appSettings.minCount, appSettings.maxCount, appSettings.minDiff);
+            let targetValue = appSettings.compareMode === 'more' ? Math.max(...counts) : Math.min(...counts);
+            let correctIndex = counts.indexOf(targetValue);
 
-### Historical significance:
+            let cardImages = [];
+            if (appSettings.imageMode === 'same') {
+                let img = activeImages[Math.floor(Math.random() * activeImages.length)];
+                for(let c=0; c<appSettings.cardCount; c++) cardImages.push(img);
+            } else {
+                let tempPool = [];
+                for(let c=0; c<appSettings.cardCount; c++) {
+                    if (tempPool.length === 0) {
+                        tempPool = [...activeImages];
+                        for (let j = tempPool.length - 1; j > 0; j--) {
+                            const k = Math.floor(Math.random() * (j + 1));
+                            [tempPool[j], tempPool[k]] = [tempPool[k], tempPool[j]];
+                        }
+                    }
+                    cardImages.push(tempPool.pop());
+                }
+            }
+            qs.push({ counts, cardImages, correctIndex, targetValue });
+        }
+        return qs;
+    }
 
-This shows how strongly the Church reacted against reformers and critics.
+    function renderQuestion(isSilentUpdate = false) {
+        gameState.isWaitingNext = false;
+        const q = gameState.questions[gameState.currentQ];
+        const compareText = appSettings.compareMode === 'more' ? '多' : '少';
+        
+        let instruction = `請選出數量比較【${compareText}】的卡片`;
+        if (appSettings.imageMode === 'same' && q.cardImages.length > 0) {
+            instruction = `請選出數量比較【${compareText}】的【${q.cardImages[0].name}】`;
+        }
 
----
+        if (!isSilentUpdate && gameState.currentQ === 0) speakText(instruction);
 
-# Overall Theme of All Documents
+        renderBoard('board-left', q, instruction);
+        renderBoard('board-right', q, instruction);
+    }
 
-The overall theme is:
+    function renderBoard(boardId, q, instruction) {
+        const board = document.getElementById(boardId);
+        if (!board) return;
+        board.innerHTML = '';
 
-## The Catholic Church defended its authority during the Reformation through:
+        const statusBar = document.createElement('div');
+        statusBar.className = 'status-bar';
+        statusBar.innerHTML = `<span>分數: ${Math.round(gameState.score)}</span> <span>第 ${gameState.currentQ + 1} / ${appSettings.questionCount} 題</span>`;
+        board.appendChild(statusBar);
 
-* strict obedience,
-* suppression of heresy,
-* Church reforms,
-* and reaffirmation of Catholic teachings.
+        const instDiv = document.createElement('div');
+        instDiv.className = 'instruction';
+        instDiv.innerText = instruction;
+        board.appendChild(instDiv);
 
----
+        const wrapper = document.createElement('div');
+        wrapper.className = 'cards-container';
+        
+        // 判斷是否為長條排版，直接將 Class 加在 wrapper 上，確保右側畫板也能精確套用 CSS
+        const isLayoutBar = document.getElementById('game-layout-bar').checked;
+        if (isLayoutBar) {
+            wrapper.classList.add('layout-bar-container');
+        }
 
-# Possible Thesis Statement
+        // 動態計算此題最大數量，作為 CSS 的自訂變數供長條排版的均等切割計算
+        const maxItems = Math.max(...q.counts);
+        wrapper.style.setProperty('--max-items', maxItems);
+        
+        for (let i = 0; i < appSettings.cardCount; i++) {
+            const count = q.counts[i];
+            const imgObj = q.cardImages[i];
+            
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.dataset.index = i; 
 
-“The documents show that during the Reformation, the Catholic Church responded to challenges by strengthening obedience to Church authority, suppressing heresy, and reforming certain abuses through the Counter-Reformation.”
+            if (boardId === 'board-left') {
+                card.onclick = () => checkAnswer(i, imgObj.name);
+            }
+
+            if (appSettings.showImage) {
+                const imgContainer = document.createElement('div');
+                imgContainer.className = 'card-images';
+                for(let j=0; j<count; j++) {
+                    const img = document.createElement('img');
+                    img.src = imgObj.src;
+                    img.className = 'item-img';
+                    imgContainer.appendChild(img);
+                }
+                card.appendChild(imgContainer);
+            }
+
+            if (appSettings.showNumber) {
+                const numDiv = document.createElement('div');
+                numDiv.className = 'card-number';
+                numDiv.innerText = count;
+                card.appendChild(numDiv);
+            }
+
+            wrapper.appendChild(card);
+        }
+        board.appendChild(wrapper);
+    }
+
+    function checkAnswer(selectedIndex, itemName) {
+        if (gameState.isWaitingNext) return;
+        if (appSettings.imageMode === 'diff') { speakText(itemName); }
+
+        const q = gameState.questions[gameState.currentQ];
+        const leftCard = document.querySelector(`#board-left .card[data-index="${selectedIndex}"]`);
+        const rightCard = document.querySelector(`#board-right .card[data-index="${selectedIndex}"]`);
+        
+        if (selectedIndex === q.correctIndex) {
+            gameState.isWaitingNext = true;
+            playSound('correct');
+            
+            leftCard.classList.add('correct');
+            if (rightCard) rightCard.classList.add('correct');
+            
+            gameState.score += 100 / appSettings.questionCount; 
+            document.querySelectorAll('.status-bar span:first-child').forEach(el => el.innerText = `分數: ${Math.round(gameState.score)}`);
+
+            setTimeout(() => {
+                gameState.currentQ++;
+                if (gameState.currentQ < appSettings.questionCount) {
+                    renderQuestion();
+                } else {
+                    showResult();
+                }
+            }, 1200); 
+        } else {
+            playSound('wrong');
+            leftCard.classList.add('wrong', 'shake');
+            if (rightCard) rightCard.classList.add('wrong', 'shake');
+            
+            setTimeout(() => {
+                leftCard.classList.remove('shake');
+                if (rightCard) rightCard.classList.remove('shake');
+            }, 400);
+        }
+    }
+
+    function showResult() {
+        document.getElementById('game-area').style.display = 'none';
+        document.getElementById('result-area').style.display = 'block';
+        document.getElementById('final-score').innerText = `總得分: ${Math.round(gameState.score)} 分`;
+        speakText("練習結束，太棒了！");
+    }
+
+    function returnToSetup() {
+        if (synth) synth.cancel();
+        document.body.classList.remove('in-game'); // 解除視窗鎖定，恢復設定頁可捲動
+        document.getElementById('game-area').style.display = 'none';
+        document.getElementById('result-area').style.display = 'none';
+        document.getElementById('setup-area').style.display = 'block';
+    }
+
+    function exportSettings() {
+        const fullSettings = { ...appSettings, imageLibrary };
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(fullSettings));
+        const anchor = document.createElement('a');
+        anchor.setAttribute("href", dataStr);
+        anchor.setAttribute("download", "quantity_game_settings.json");
+        document.body.appendChild(anchor);
+        anchor.click(); anchor.remove();
+    }
+
+    function importSettings(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try { processImportedData(JSON.parse(e.target.result)); } 
+            catch (err) { alert("檔案格式錯誤"); }
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+    }
+</script>
+
+</body>
+</html>
